@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBA ADP Player Selector</title>
+    
+    <!-- Include the PapaParse library for parsing CSV in the browser -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            padding: 20px;
+            margin: 0;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        #player-input {
+            padding: 8px;
+            font-size: 16px;
+            width: 300px;
+            margin-right: 10px;
+        }
+        button {
+            padding: 8px 15px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #best-player {
+            font-size: 18px;
+            font-weight: bold;
+            color: green;
+        }
+        #available-players {
+            margin-top: 10px;
+        }
+        .available-player {
+            color: black;
+        }
+        #history {
+            margin-top: 20px;
+        }
+        #history ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        #history li {
+            background-color: #ddd;
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        #container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .columns {
+            display: flex;
+            justify-content: space-between;
+        }
+        .column {
+            width: 45%;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1>NBA ADP Player Selector</h1>
+
+        <!-- Input for typing player's name -->
+        <label for="player-input">Enter Player Name: </label>
+        <input type="text" id="player-input" list="player-list" placeholder="Type a player's name">
+        <button onclick="removePlayer()">Pick Player</button>
+
+        <datalist id="player-list"></datalist>
+
+        <!-- Main Columns -->
+        <div class="columns">
+            <!-- Left Column: Available Players -->
+            <div class="column">
+                <h2>Available Players</h2>
+                <p id="best-player">No players picked yet</p>
+                <div id="available-players"></div>
+            </div>
+
+            <!-- Right Column: Pick History -->
+            <div class="column" id="history">
+                <h2>Pick History</h2>
+                <ul id="pick-history"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let availablePlayers = {}; // Holds the player data from the CSV
+        let pickHistory = []; // Holds the history of picked players
+        const playerInput = document.getElementById('player-input');
+        const playerList = document.getElementById('player-list');
+        const bestPlayerDisplay = document.getElementById('best-player');
+        const availablePlayersDisplay = document.getElementById('available-players');
+        const pickHistoryList = document.getElementById('pick-history');
+
+        // Function to fetch and parse CSV file
+        function loadCSV() {
+            Papa.parse("nba-adp-All.csv", {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    const playerData = results.data
+                        .map(player => ({
+                            Player: player.Name,
+                            AVG: parseFloat(player.AVG),
+                            ESPN: parseFloat(player.ESPN) || null,
+                            CBS: parseFloat(player.CBS) || null,
+                            Yahoo: parseFloat(player.Yahoo) || null,
+                            Underdog: parseFloat(player.Underdog) || null,
+                            Fantrax: parseFloat(player.Fantrax) || null
+                        }))
+                        .filter(player => !isNaN(player.AVG)); // Ensure valid AVG
+                    
+                    // Store player data
+                    playerData.forEach(player => {
+                        availablePlayers[player.Player] = player;
+                    });
+
+                    populatePlayerList(); // Populate the player input list
+                    updateBestPlayer(); // Update the best available player
+                }
+            });
+        }
+
+        // Function to calculate the average ADP from available sources
+        function calculateAverageADP(player) {
+            const adps = [player.ESPN, player.CBS, player.Yahoo, player.Underdog, player.Fantrax].filter(adp => adp !== null);
+            const total = adps.reduce((acc, val) => acc + val, 0);
+            return total / adps.length;
+        }
+
+        // Function to populate the datalist with players
+        function populatePlayerList() {
+            playerList.innerHTML = ''; // Clear the datalist first
+            Object.keys(availablePlayers).forEach(playerName => {
+                const option = document.createElement('option');
+                option.value = playerName;
+                playerList.appendChild(option);
+            });
+        }
+
+        // Function to update the best available player based on average ADP and list all players
+        function updateBestPlayer() {
+            const availablePlayerList = Object.keys(availablePlayers).map(playerName => {
+                const player = availablePlayers[playerName];
+                const avgADP = calculateAverageADP(player);
+                return { ...player, avgADP };
+            });
+
+            if (availablePlayerList.length === 0) {
+                bestPlayerDisplay.textContent = "No players available";
+                availablePlayersDisplay.innerHTML = '';
+            } else {
+                availablePlayerList.sort((a, b) => a.avgADP - b.avgADP); // Sort by average ADP
+                const bestPlayer = availablePlayerList[0]; // Best player with lowest average ADP
+                const sourceADPText = `ESPN: ${bestPlayer.ESPN || 'N/A'}, CBS: ${bestPlayer.CBS || 'N/A'}, Yahoo: ${bestPlayer.Yahoo || 'N/A'}, Underdog: ${bestPlayer.Underdog || 'N/A'}, Fantrax: ${bestPlayer.Fantrax || 'N/A'}`;
+                bestPlayerDisplay.innerHTML = `Best Available: ${bestPlayer.Player} (Average ADP: ${bestPlayer.avgADP.toFixed(2)})<br>${sourceADPText}`;
+
+                // Now list the remaining available players
+                availablePlayersDisplay.innerHTML = availablePlayerList.slice(1).map(player => {
+                    const adpText = `ESPN: ${player.ESPN || 'N/A'}, CBS: ${player.CBS || 'N/A'}, Yahoo: ${player.Yahoo || 'N/A'}, Underdog: ${player.Underdog || 'N/A'}, Fantrax: ${player.Fantrax || 'N/A'}`;
+                    return `<p class="available-player">${player.Player} (Average ADP: ${player.avgADP.toFixed(2)})<br>${adpText}</p>`;
+                }).join('');
+            }
+        }
+
+        // Function to update the pick history list
+        function updatePickHistory() {
+            pickHistoryList.innerHTML = ''; // Clear the current list
+            pickHistory.forEach((player, index) => {
+                const sourceADPText = `ESPN: ${player.ESPN || 'N/A'}, CBS: ${player.CBS || 'N/A'}, Yahoo: ${player.Yahoo || 'N/A'}, Underdog: ${player.Underdog || 'N/A'}, Fantrax: ${player.Fantrax || 'N/A'}`;
+                const listItem = document.createElement('li');
+                listItem.innerHTML = `${index + 1}. ${player.Player} (Average ADP: ${player.avgADP.toFixed(2)})<br>${sourceADPText}`;
+                pickHistoryList.appendChild(listItem);
+            });
+        }
+
+        // Function to remove a player when selected
+        function removePlayer() {
+            const selectedPlayer = playerInput.value;
+            if (availablePlayers[selectedPlayer]) {
+                const pickedPlayer = availablePlayers[selectedPlayer];
+                pickHistory.push({ ...pickedPlayer, avgADP: calculateAverageADP(pickedPlayer) }); // Add player to pick history
+                delete availablePlayers[selectedPlayer]; // Remove player from availablePlayers
+
+                // Update the player list, best available player, and pick history
+                populatePlayerList();
+                updateBestPlayer();
+                updatePickHistory();
+
+                playerInput.value = ''; // Clear the input field
+            } else {
+                alert("Player not found in the list. Please type the name correctly.");
+            }
+        }
+
+        // Load the CSV file and populate the player list on page load
+        window.onload = loadCSV;
+    </script>
+</body>
+</html>
