@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NBA ADP Player Selector</title>
-    
+
     <!-- Include the PapaParse library for parsing CSV in the browser -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
-    
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -44,12 +44,13 @@
         #available-players {
             margin-top: 10px;
         }
-        .available-player {
-            color: black;
-        }
-        #history {
-            margin-top: 20px;
-        }
+        #available-players {
+    overflow-y: auto; /* Ensure available players list can scroll if it gets too large */
+}
+
+#history {
+    overflow-y: auto; /* Allow the pick history to scroll */
+}
         #history ul {
             list-style-type: none;
             padding: 0;
@@ -61,19 +62,32 @@
             border-radius: 4px;
         }
         #container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    max-width: 1000px; /* Increase the width of the main container */
+    margin: 0 auto;
+    background: white;
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+.columns {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px; /* Add space between the columns */
+}
+.column {
+    flex: 1; /* Make both columns flexible and share space equally */
+    min-width: 0; /* Prevent overflowing */
+}
+        .sort-buttons {
+            margin-top: 20px;
+            margin-bottom: 15px;
         }
-        .columns {
-            display: flex;
-            justify-content: space-between;
+        .sort-buttons button {
+            margin-right: 5px;
         }
-        .column {
-            width: 45%;
-        }
+        .adp-line {
+    white-space: nowrap;
+    display: inline-block;
+}
     </style>
 </head>
 <body>
@@ -86,6 +100,15 @@
         <button onclick="removePlayer()">Pick Player</button>
 
         <datalist id="player-list"></datalist>
+
+        <!-- Sorting Buttons -->
+        <div class="sort-buttons">
+            <button onclick="sortPlayers('AVG')">Sort by AVG</button>
+            <button onclick="sortPlayers('ESPN')">Sort by ESPN</button>
+            <button onclick="sortPlayers('Yahoo')">Sort by Yahoo</button>
+            <button onclick="sortPlayers('Underdog')">Sort by Underdog</button>
+            <button onclick="sortPlayers('Fantrax')">Sort by Fantrax</button>
+        </div>
 
         <!-- Main Columns -->
         <div class="columns">
@@ -124,13 +147,12 @@
                             Player: player.Name,
                             AVG: parseFloat(player.AVG),
                             ESPN: parseFloat(player.ESPN) || null,
-                           
                             Yahoo: parseFloat(player.Yahoo) || null,
                             Underdog: parseFloat(player.Underdog) || null,
                             Fantrax: parseFloat(player.Fantrax) || null
                         }))
                         .filter(player => !isNaN(player.AVG)); // Ensure valid AVG
-                    
+
                     // Store player data
                     playerData.forEach(player => {
                         availablePlayers[player.Player] = player;
@@ -161,39 +183,61 @@
 
         // Function to update the best available player based on average ADP and list all players
         function updateBestPlayer() {
-            const availablePlayerList = Object.keys(availablePlayers).map(playerName => {
-                const player = availablePlayers[playerName];
-                const avgADP = calculateAverageADP(player);
-                return { ...player, avgADP };
+    const availablePlayerList = Object.keys(availablePlayers).map(playerName => {
+        const player = availablePlayers[playerName];
+        const avgADP = calculateAverageADP(player);
+        return { ...player, avgADP };
+    });
+
+    if (availablePlayerList.length === 0) {
+        bestPlayerDisplay.textContent = "No players available";
+        availablePlayersDisplay.innerHTML = '';
+    } else {
+        availablePlayerList.sort((a, b) => a.avgADP - b.avgADP); // Sort by average ADP
+        const bestPlayer = availablePlayerList[0]; // Best player with lowest average ADP
+        const sourceADPText = `ESPN: ${bestPlayer.ESPN || 'N/A'}, Yahoo: ${bestPlayer.Yahoo || 'N/A'}, Underdog: ${bestPlayer.Underdog || 'N/A'}, Fantrax: ${bestPlayer.Fantrax || 'N/A'}`;
+        
+        // Ensure the ADP text is displayed in a single line
+        bestPlayerDisplay.innerHTML = `Best Available: ${bestPlayer.Player} (Average ADP: ${bestPlayer.avgADP.toFixed(2)}) <span class="adp-line">${sourceADPText}</span>`;
+
+        // Now list the remaining available players
+        availablePlayersDisplay.innerHTML = availablePlayerList.slice(1).map(player => {
+            const adpText = `ESPN: ${player.ESPN || 'N/A'}, Yahoo: ${player.Yahoo || 'N/A'}, Underdog: ${player.Underdog || 'N/A'}, Fantrax: ${player.Fantrax || 'N/A'}`;
+            return `<p class="available-player">${player.Player} (Average ADP: ${player.avgADP.toFixed(2)})<span class="adp-line">${adpText}</span></p>`;
+        }).join('');
+    }
+}
+
+        // Function to sort players based on specific ranking (AVG, ESPN, Yahoo, Underdog, Fantrax)
+        function sortPlayers(ranking) {
+            const availablePlayerList = Object.keys(availablePlayers).map(playerName => availablePlayers[playerName]);
+
+            availablePlayerList.sort((a, b) => {
+                const aRank = a[ranking] !== null ? a[ranking] : Infinity;
+                const bRank = b[ranking] !== null ? b[ranking] : Infinity;
+                return aRank - bRank;
             });
 
-            if (availablePlayerList.length === 0) {
-                bestPlayerDisplay.textContent = "No players available";
-                availablePlayersDisplay.innerHTML = '';
-            } else {
-                availablePlayerList.sort((a, b) => a.avgADP - b.avgADP); // Sort by average ADP
-                const bestPlayer = availablePlayerList[0]; // Best player with lowest average ADP
-                const sourceADPText = `ESPN: ${bestPlayer.ESPN || 'N/A'}, Yahoo: ${bestPlayer.Yahoo || 'N/A'}, Underdog: ${bestPlayer.Underdog || 'N/A'}, Fantrax: ${bestPlayer.Fantrax || 'N/A'}`;
-                bestPlayerDisplay.innerHTML = `Best Available: ${bestPlayer.Player} (Average ADP: ${bestPlayer.avgADP.toFixed(2)})<br>${sourceADPText}`;
-
-                // Now list the remaining available players
-                availablePlayersDisplay.innerHTML = availablePlayerList.slice(1).map(player => {
-                    const adpText = `ESPN: ${player.ESPN || 'N/A'}, Yahoo: ${player.Yahoo || 'N/A'}, Underdog: ${player.Underdog || 'N/A'}, Fantrax: ${player.Fantrax || 'N/A'}`;
-                    return `<p class="available-player">${player.Player} (Average ADP: ${player.avgADP.toFixed(2)})<br>${adpText}</p>`;
-                }).join('');
-            }
+            // Update player display
+            availablePlayersDisplay.innerHTML = availablePlayerList.map(player => {
+                const avgADP = calculateAverageADP(player);
+                const adpText = `ESPN: ${player.ESPN || 'N/A'}, Yahoo: ${player.Yahoo || 'N/A'}, Underdog: ${player.Underdog || 'N/A'}, Fantrax: ${player.Fantrax || 'N/A'}`;
+                return `<p class="available-player">${player.Player} (Average ADP: ${avgADP.toFixed(2)})<br>${adpText}</p>`;
+            }).join('');
         }
 
         // Function to update the pick history list
         function updatePickHistory() {
-            pickHistoryList.innerHTML = ''; // Clear the current list
-            pickHistory.forEach((player, index) => {
-                const sourceADPText = `ESPN: ${player.ESPN || 'N/A'}, Yahoo: ${player.Yahoo || 'N/A'}, Underdog: ${player.Underdog || 'N/A'}, Fantrax: ${player.Fantrax || 'N/A'}`;
-                const listItem = document.createElement('li');
-                listItem.innerHTML = `${index + 1}. ${player.Player} (Average ADP: ${player.avgADP.toFixed(2)})<br>${sourceADPText}`;
-                pickHistoryList.appendChild(listItem);
-            });
-        }
+    pickHistoryList.innerHTML = ''; // Clear the current list
+    pickHistory.forEach((player, index) => {
+        const sourceADPText = `ESPN: ${player.ESPN || 'N/A'}, Yahoo: ${player.Yahoo || 'N/A'}, Underdog: ${player.Underdog || 'N/A'}, Fantrax: ${player.Fantrax || 'N/A'}`;
+        const listItem = document.createElement('li');
+        
+        // Ensure ADP text is displayed in a single line like in the best player section
+        listItem.innerHTML = `${index + 1}. ${player.Player} (Average ADP: ${player.avgADP.toFixed(2)})<br><span class="adp-line">${sourceADPText}</span>`;
+        pickHistoryList.appendChild(listItem);
+    });
+}
 
         // Function to remove a player when selected
         function removePlayer() {
