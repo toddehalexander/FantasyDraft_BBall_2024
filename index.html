@@ -124,7 +124,7 @@
                             Player: player.Name,
                             AVG: parseFloat(player.AVG),
                             ESPN: parseFloat(player.ESPN) || null,
-                            CBS: parseFloat(player.CBS) || null,
+                           
                             Yahoo: parseFloat(player.Yahoo) || null,
                             Underdog: parseFloat(player.Underdog) || null,
                             Fantrax: parseFloat(player.Fantrax) || null
@@ -144,7 +144,7 @@
 
         // Function to calculate the average ADP from available sources
         function calculateAverageADP(player) {
-            const adps = [player.ESPN, player.CBS, player.Yahoo, player.Underdog, player.Fantrax].filter(adp => adp !== null);
+            const adps = [player.ESPN, player.Yahoo, player.Underdog, player.Fantrax].filter(adp => adp !== null);
             const total = adps.reduce((acc, val) => acc + val, 0);
             return total / adps.length;
         }
@@ -173,12 +173,12 @@
             } else {
                 availablePlayerList.sort((a, b) => a.avgADP - b.avgADP); // Sort by average ADP
                 const bestPlayer = availablePlayerList[0]; // Best player with lowest average ADP
-                const sourceADPText = `ESPN: ${bestPlayer.ESPN || 'N/A'}, CBS: ${bestPlayer.CBS || 'N/A'}, Yahoo: ${bestPlayer.Yahoo || 'N/A'}, Underdog: ${bestPlayer.Underdog || 'N/A'}, Fantrax: ${bestPlayer.Fantrax || 'N/A'}`;
+                const sourceADPText = `ESPN: ${bestPlayer.ESPN || 'N/A'}, Yahoo: ${bestPlayer.Yahoo || 'N/A'}, Underdog: ${bestPlayer.Underdog || 'N/A'}, Fantrax: ${bestPlayer.Fantrax || 'N/A'}`;
                 bestPlayerDisplay.innerHTML = `Best Available: ${bestPlayer.Player} (Average ADP: ${bestPlayer.avgADP.toFixed(2)})<br>${sourceADPText}`;
 
                 // Now list the remaining available players
                 availablePlayersDisplay.innerHTML = availablePlayerList.slice(1).map(player => {
-                    const adpText = `ESPN: ${player.ESPN || 'N/A'}, CBS: ${player.CBS || 'N/A'}, Yahoo: ${player.Yahoo || 'N/A'}, Underdog: ${player.Underdog || 'N/A'}, Fantrax: ${player.Fantrax || 'N/A'}`;
+                    const adpText = `ESPN: ${player.ESPN || 'N/A'}, Yahoo: ${player.Yahoo || 'N/A'}, Underdog: ${player.Underdog || 'N/A'}, Fantrax: ${player.Fantrax || 'N/A'}`;
                     return `<p class="available-player">${player.Player} (Average ADP: ${player.avgADP.toFixed(2)})<br>${adpText}</p>`;
                 }).join('');
             }
@@ -188,7 +188,7 @@
         function updatePickHistory() {
             pickHistoryList.innerHTML = ''; // Clear the current list
             pickHistory.forEach((player, index) => {
-                const sourceADPText = `ESPN: ${player.ESPN || 'N/A'}, CBS: ${player.CBS || 'N/A'}, Yahoo: ${player.Yahoo || 'N/A'}, Underdog: ${player.Underdog || 'N/A'}, Fantrax: ${player.Fantrax || 'N/A'}`;
+                const sourceADPText = `ESPN: ${player.ESPN || 'N/A'}, Yahoo: ${player.Yahoo || 'N/A'}, Underdog: ${player.Underdog || 'N/A'}, Fantrax: ${player.Fantrax || 'N/A'}`;
                 const listItem = document.createElement('li');
                 listItem.innerHTML = `${index + 1}. ${player.Player} (Average ADP: ${player.avgADP.toFixed(2)})<br>${sourceADPText}`;
                 pickHistoryList.appendChild(listItem);
